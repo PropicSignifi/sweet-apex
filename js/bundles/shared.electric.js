@@ -5312,11 +5312,11 @@ goog.loadModule(function (exports) {
         ie_close('title');
         ie_open('link', null, null, 'rel', 'stylesheet', 'href', 'https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700|Roboto+Mono');
         ie_close('link');
-        ie_open('link', null, null, 'rel', 'stylesheet', 'href', '/sweet-apex/vendor/galano/galano.css');
-        ie_close('link');
         ie_open('link', null, null, 'rel', 'stylesheet', 'href', '/sweet-apex/vendor/icon-12/icon-12.css');
         ie_close('link');
         ie_open('link', null, null, 'rel', 'stylesheet', 'href', '/sweet-apex/vendor/icon-16/icon-16.css');
+        ie_close('link');
+        ie_open('link', null, null, 'rel', 'stylesheet', 'href', '/sweet-apex/vendor/galano/galano.css');
         ie_close('link');
         ie_open('link', null, null, 'rel', 'stylesheet', 'href', '/sweet-apex/vendor/senna/senna.css');
         ie_close('link');
