@@ -34,7 +34,7 @@
 /******/
 /******/ 	// objects to store loaded and loading chunks
 /******/ 	var installedChunks = {
-/******/ 		41: 0
+/******/ 		42: 0
 /******/ 	};
 /******/
 /******/ 	// The require function
@@ -148,6 +148,321 @@ exports.ComponentRenderer = _ComponentRenderer2.default;
 
 /***/ }),
 /* 1 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+exports.validators = exports.SoyAop = exports.Soy = exports.Config = undefined;
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _get = function get(object, property, receiver) { if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { return get(parent, property, receiver); } } else if ("value" in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } };
+
+__webpack_require__(195);
+
+var _metalComponent = __webpack_require__(0);
+
+var _metal = __webpack_require__(3);
+
+var _metalState = __webpack_require__(18);
+
+var _metalIncrementalDom = __webpack_require__(37);
+
+var _metalIncrementalDom2 = _interopRequireDefault(_metalIncrementalDom);
+
+var _SoyAop = __webpack_require__(205);
+
+var _SoyAop2 = _interopRequireDefault(_SoyAop);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+// The injected data that will be passed to soy templates.
+var ijData = {};
+
+/**
+ * Soy Renderer
+ */
+
+var Soy = function (_IncrementalDomRender) {
+	_inherits(Soy, _IncrementalDomRender);
+
+	function Soy() {
+		_classCallCheck(this, Soy);
+
+		return _possibleConstructorReturn(this, (Soy.__proto__ || Object.getPrototypeOf(Soy)).apply(this, arguments));
+	}
+
+	_createClass(Soy, [{
+		key: 'getExtraDataConfig',
+
+		/**
+   * Adds the template params to the component's state, if they don't exist yet.
+   * @param {!Component} component
+   * @return {Object}
+   */
+		value: function getExtraDataConfig(component) {
+			var elementTemplate = component.constructor.TEMPLATE;
+			if (!(0, _metal.isFunction)(elementTemplate)) {
+				return;
+			}
+
+			elementTemplate = _SoyAop2.default.getOriginalFn(elementTemplate);
+			this.soyParamTypes_ = elementTemplate.types || {};
+
+			var keys = elementTemplate.params || [];
+			var configs = {};
+			for (var i = 0; i < keys.length; i++) {
+				if (!component[keys[i]]) {
+					configs[keys[i]] = {};
+				}
+			}
+			return configs;
+		}
+
+		/**
+   * Copies the component's state to an object so it can be passed as it's
+   * template call's data. The copying needs to be done because, if the component
+   * itself is passed directly, some problems occur when soy tries to merge it
+   * with other data, due to property getters and setters. This is safer.
+   * Also calls the component's "prepareStateForRender" to let it change the
+   * data passed to the template.
+   * @param {!Component} component
+   * @param {!Array<string>} params The params used by this template.
+   * @return {!Object}
+   * @protected
+   */
+
+	}, {
+		key: 'buildTemplateData_',
+		value: function buildTemplateData_(component, params) {
+			var _this2 = this;
+
+			var data = _metal.object.mixin({}, this.getConfig(component));
+			component.getStateKeys().forEach(function (key) {
+				var value = component[key];
+				if (_this2.isHtmlParam_(component, key)) {
+					value = soyRenderer_.toIncDom(value);
+				}
+				data[key] = value;
+			});
+
+			for (var i = 0; i < params.length; i++) {
+				if (!data[params[i]] && (0, _metal.isFunction)(component[params[i]])) {
+					data[params[i]] = component[params[i]].bind(component);
+				}
+			}
+
+			if ((0, _metal.isFunction)(component.prepareStateForRender)) {
+				return component.prepareStateForRender(data) || data;
+			} else {
+				return data;
+			}
+		}
+
+		/**
+   * Returns the requested template function. This function will be wrapped in
+   * another though, just to defer the requirement of the template's module
+   * being ready until the function is actually called.
+   * @param {string} namespace The soy template's namespace.
+   * @param {string} templateName The name of the template function.
+   * @return {!function()}
+   */
+
+	}, {
+		key: 'getTemplate',
+		value: function getTemplate(namespace, templateName) {
+			return function (data, ignored, ijData) {
+				if (!goog.loadedModules_[namespace]) {
+					throw new Error('No template with namespace "' + namespace + '" has been loaded yet.');
+				}
+				return goog.loadedModules_[namespace][templateName](data, ignored, ijData);
+			};
+		}
+
+		/**
+   * Handles an intercepted soy template call. If the call is for a component's
+   * main template, then it will be replaced with a call that incremental dom
+   * can use for both handling an instance of that component and rendering it.
+   * @param {!function()} originalFn The original template function that was
+   *     intercepted.
+   * @param {Object} data The data the template was called with.
+   * @protected
+   */
+
+	}, {
+		key: 'handleInterceptedCall_',
+		value: function handleInterceptedCall_(originalFn) {
+			var data = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+
+			var args = [originalFn.componentCtor, null, []];
+			for (var key in data) {
+				if (Object.prototype.hasOwnProperty.call(data, key)) {
+					args.push(key, data[key]);
+				}
+			}
+			IncrementalDOM.elementVoid.apply(null, args);
+		}
+
+		/**
+   * Checks if the given param type is html.
+   * @param {!Component} component
+   * @param {string} name
+   * @protected
+   * @return {boolean}
+   */
+
+	}, {
+		key: 'isHtmlParam_',
+		value: function isHtmlParam_(component, name) {
+			var state = component.getDataManager().getStateInstance(component);
+			if (state.getStateKeyConfig(name).isHtml) {
+				return true;
+			}
+
+			var elementTemplate = _SoyAop2.default.getOriginalFn(component.constructor.TEMPLATE);
+			var type = (elementTemplate.types || {})[name] || '';
+			return type.split('|').indexOf('html') !== -1;
+		}
+
+		/**
+   * Registers the given templates to be used by `Soy` for the specified
+   * component constructor.
+   * @param {!Function} componentCtor The constructor of the component that
+   *     should use the given templates.
+   * @param {!Object} templates Object containing soy template functions.
+   * @param {string=} mainTemplate The name of the main template that should be
+   *     used to render the component. Defaults to "render".
+   */
+
+	}, {
+		key: 'register',
+		value: function register(componentCtor, templates) {
+			var mainTemplate = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 'render';
+
+			componentCtor.RENDERER = soyRenderer_;
+			componentCtor.TEMPLATE = _SoyAop2.default.getOriginalFn(templates[mainTemplate]);
+			componentCtor.TEMPLATE.componentCtor = componentCtor;
+			_SoyAop2.default.registerForInterception(templates, mainTemplate);
+			_metalComponent.ComponentRegistry.register(componentCtor);
+		}
+
+		/**
+   * Overrides the default method from `IncrementalDomRenderer` so the component's
+   * soy template can be used for rendering.
+   * @param {!Component} component
+   * @param {!Object} data Data passed to the component when rendering it.
+   * @override
+   */
+
+	}, {
+		key: 'renderIncDom',
+		value: function renderIncDom(component) {
+			var elementTemplate = component.constructor.TEMPLATE;
+			if ((0, _metal.isFunction)(elementTemplate) && !component.render) {
+				elementTemplate = _SoyAop2.default.getOriginalFn(elementTemplate);
+				_SoyAop2.default.startInterception(this.handleInterceptedCall_);
+				var data = this.buildTemplateData_(component, elementTemplate.params || []);
+				elementTemplate(data, null, ijData);
+				_SoyAop2.default.stopInterception();
+			} else {
+				_get(Soy.prototype.__proto__ || Object.getPrototypeOf(Soy.prototype), 'renderIncDom', this).call(this, component);
+			}
+		}
+
+		/**
+   * Sets the injected data object that should be passed to templates.
+   * @param {Object} data
+   */
+
+	}, {
+		key: 'setInjectedData',
+		value: function setInjectedData(data) {
+			ijData = data || {};
+		}
+
+		/**
+   * Overrides the original `IncrementalDomRenderer` method so that only
+   * state keys used by the main template can cause updates.
+   * @param {!Component} component
+   * @param {Object} changes
+   * @return {boolean}
+   */
+
+	}, {
+		key: 'shouldUpdate',
+		value: function shouldUpdate(component, changes) {
+			var should = _get(Soy.prototype.__proto__ || Object.getPrototypeOf(Soy.prototype), 'shouldUpdate', this).call(this, component, changes);
+			if (!should || component.shouldUpdate) {
+				return should;
+			}
+
+			var fn = component.constructor.TEMPLATE;
+			var params = fn ? _SoyAop2.default.getOriginalFn(fn).params : [];
+			for (var i = 0; i < params.length; i++) {
+				if (changes.props[params[i]]) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		/**
+   * Converts the given incremental dom function into an html string.
+   * @param {!function()} incDomFn
+   * @return {string}
+   */
+
+	}, {
+		key: 'toHtmlString',
+		value: function toHtmlString(incDomFn) {
+			var element = document.createElement('div');
+			IncrementalDOM.patch(element, incDomFn);
+			return element.innerHTML;
+		}
+
+		/**
+   * Converts the given html string into an incremental dom function.
+   * @param {string|{contentKind: string, content: string}} value
+   * @return {!function()}
+   */
+
+	}, {
+		key: 'toIncDom',
+		value: function toIncDom(value) {
+			if ((0, _metal.isObject)(value) && (0, _metal.isString)(value.content) && value.contentKind === 'HTML') {
+				value = value.content;
+			}
+			if ((0, _metal.isString)(value)) {
+				value = _metalIncrementalDom.HTML2IncDom.buildFn(value);
+			}
+			return value;
+		}
+	}]);
+
+	return Soy;
+}(_metalIncrementalDom2.default.constructor);
+
+var soyRenderer_ = new Soy();
+soyRenderer_.RENDERER_NAME = 'soy';
+
+exports.default = soyRenderer_;
+exports.Config = _metalState.Config;
+exports.Soy = soyRenderer_;
+exports.SoyAop = _SoyAop2.default;
+exports.validators = _metalState.validators;
+
+/***/ }),
+/* 2 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(module) {var require;//! moment.js
@@ -4660,321 +4975,6 @@ exports.ComponentRenderer = _ComponentRenderer2.default;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(258)(module)))
 
 /***/ }),
-/* 2 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-	value: true
-});
-exports.validators = exports.SoyAop = exports.Soy = exports.Config = undefined;
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-var _get = function get(object, property, receiver) { if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { return get(parent, property, receiver); } } else if ("value" in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } };
-
-__webpack_require__(195);
-
-var _metalComponent = __webpack_require__(0);
-
-var _metal = __webpack_require__(3);
-
-var _metalState = __webpack_require__(18);
-
-var _metalIncrementalDom = __webpack_require__(37);
-
-var _metalIncrementalDom2 = _interopRequireDefault(_metalIncrementalDom);
-
-var _SoyAop = __webpack_require__(205);
-
-var _SoyAop2 = _interopRequireDefault(_SoyAop);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-// The injected data that will be passed to soy templates.
-var ijData = {};
-
-/**
- * Soy Renderer
- */
-
-var Soy = function (_IncrementalDomRender) {
-	_inherits(Soy, _IncrementalDomRender);
-
-	function Soy() {
-		_classCallCheck(this, Soy);
-
-		return _possibleConstructorReturn(this, (Soy.__proto__ || Object.getPrototypeOf(Soy)).apply(this, arguments));
-	}
-
-	_createClass(Soy, [{
-		key: 'getExtraDataConfig',
-
-		/**
-   * Adds the template params to the component's state, if they don't exist yet.
-   * @param {!Component} component
-   * @return {Object}
-   */
-		value: function getExtraDataConfig(component) {
-			var elementTemplate = component.constructor.TEMPLATE;
-			if (!(0, _metal.isFunction)(elementTemplate)) {
-				return;
-			}
-
-			elementTemplate = _SoyAop2.default.getOriginalFn(elementTemplate);
-			this.soyParamTypes_ = elementTemplate.types || {};
-
-			var keys = elementTemplate.params || [];
-			var configs = {};
-			for (var i = 0; i < keys.length; i++) {
-				if (!component[keys[i]]) {
-					configs[keys[i]] = {};
-				}
-			}
-			return configs;
-		}
-
-		/**
-   * Copies the component's state to an object so it can be passed as it's
-   * template call's data. The copying needs to be done because, if the component
-   * itself is passed directly, some problems occur when soy tries to merge it
-   * with other data, due to property getters and setters. This is safer.
-   * Also calls the component's "prepareStateForRender" to let it change the
-   * data passed to the template.
-   * @param {!Component} component
-   * @param {!Array<string>} params The params used by this template.
-   * @return {!Object}
-   * @protected
-   */
-
-	}, {
-		key: 'buildTemplateData_',
-		value: function buildTemplateData_(component, params) {
-			var _this2 = this;
-
-			var data = _metal.object.mixin({}, this.getConfig(component));
-			component.getStateKeys().forEach(function (key) {
-				var value = component[key];
-				if (_this2.isHtmlParam_(component, key)) {
-					value = soyRenderer_.toIncDom(value);
-				}
-				data[key] = value;
-			});
-
-			for (var i = 0; i < params.length; i++) {
-				if (!data[params[i]] && (0, _metal.isFunction)(component[params[i]])) {
-					data[params[i]] = component[params[i]].bind(component);
-				}
-			}
-
-			if ((0, _metal.isFunction)(component.prepareStateForRender)) {
-				return component.prepareStateForRender(data) || data;
-			} else {
-				return data;
-			}
-		}
-
-		/**
-   * Returns the requested template function. This function will be wrapped in
-   * another though, just to defer the requirement of the template's module
-   * being ready until the function is actually called.
-   * @param {string} namespace The soy template's namespace.
-   * @param {string} templateName The name of the template function.
-   * @return {!function()}
-   */
-
-	}, {
-		key: 'getTemplate',
-		value: function getTemplate(namespace, templateName) {
-			return function (data, ignored, ijData) {
-				if (!goog.loadedModules_[namespace]) {
-					throw new Error('No template with namespace "' + namespace + '" has been loaded yet.');
-				}
-				return goog.loadedModules_[namespace][templateName](data, ignored, ijData);
-			};
-		}
-
-		/**
-   * Handles an intercepted soy template call. If the call is for a component's
-   * main template, then it will be replaced with a call that incremental dom
-   * can use for both handling an instance of that component and rendering it.
-   * @param {!function()} originalFn The original template function that was
-   *     intercepted.
-   * @param {Object} data The data the template was called with.
-   * @protected
-   */
-
-	}, {
-		key: 'handleInterceptedCall_',
-		value: function handleInterceptedCall_(originalFn) {
-			var data = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
-
-			var args = [originalFn.componentCtor, null, []];
-			for (var key in data) {
-				if (Object.prototype.hasOwnProperty.call(data, key)) {
-					args.push(key, data[key]);
-				}
-			}
-			IncrementalDOM.elementVoid.apply(null, args);
-		}
-
-		/**
-   * Checks if the given param type is html.
-   * @param {!Component} component
-   * @param {string} name
-   * @protected
-   * @return {boolean}
-   */
-
-	}, {
-		key: 'isHtmlParam_',
-		value: function isHtmlParam_(component, name) {
-			var state = component.getDataManager().getStateInstance(component);
-			if (state.getStateKeyConfig(name).isHtml) {
-				return true;
-			}
-
-			var elementTemplate = _SoyAop2.default.getOriginalFn(component.constructor.TEMPLATE);
-			var type = (elementTemplate.types || {})[name] || '';
-			return type.split('|').indexOf('html') !== -1;
-		}
-
-		/**
-   * Registers the given templates to be used by `Soy` for the specified
-   * component constructor.
-   * @param {!Function} componentCtor The constructor of the component that
-   *     should use the given templates.
-   * @param {!Object} templates Object containing soy template functions.
-   * @param {string=} mainTemplate The name of the main template that should be
-   *     used to render the component. Defaults to "render".
-   */
-
-	}, {
-		key: 'register',
-		value: function register(componentCtor, templates) {
-			var mainTemplate = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 'render';
-
-			componentCtor.RENDERER = soyRenderer_;
-			componentCtor.TEMPLATE = _SoyAop2.default.getOriginalFn(templates[mainTemplate]);
-			componentCtor.TEMPLATE.componentCtor = componentCtor;
-			_SoyAop2.default.registerForInterception(templates, mainTemplate);
-			_metalComponent.ComponentRegistry.register(componentCtor);
-		}
-
-		/**
-   * Overrides the default method from `IncrementalDomRenderer` so the component's
-   * soy template can be used for rendering.
-   * @param {!Component} component
-   * @param {!Object} data Data passed to the component when rendering it.
-   * @override
-   */
-
-	}, {
-		key: 'renderIncDom',
-		value: function renderIncDom(component) {
-			var elementTemplate = component.constructor.TEMPLATE;
-			if ((0, _metal.isFunction)(elementTemplate) && !component.render) {
-				elementTemplate = _SoyAop2.default.getOriginalFn(elementTemplate);
-				_SoyAop2.default.startInterception(this.handleInterceptedCall_);
-				var data = this.buildTemplateData_(component, elementTemplate.params || []);
-				elementTemplate(data, null, ijData);
-				_SoyAop2.default.stopInterception();
-			} else {
-				_get(Soy.prototype.__proto__ || Object.getPrototypeOf(Soy.prototype), 'renderIncDom', this).call(this, component);
-			}
-		}
-
-		/**
-   * Sets the injected data object that should be passed to templates.
-   * @param {Object} data
-   */
-
-	}, {
-		key: 'setInjectedData',
-		value: function setInjectedData(data) {
-			ijData = data || {};
-		}
-
-		/**
-   * Overrides the original `IncrementalDomRenderer` method so that only
-   * state keys used by the main template can cause updates.
-   * @param {!Component} component
-   * @param {Object} changes
-   * @return {boolean}
-   */
-
-	}, {
-		key: 'shouldUpdate',
-		value: function shouldUpdate(component, changes) {
-			var should = _get(Soy.prototype.__proto__ || Object.getPrototypeOf(Soy.prototype), 'shouldUpdate', this).call(this, component, changes);
-			if (!should || component.shouldUpdate) {
-				return should;
-			}
-
-			var fn = component.constructor.TEMPLATE;
-			var params = fn ? _SoyAop2.default.getOriginalFn(fn).params : [];
-			for (var i = 0; i < params.length; i++) {
-				if (changes.props[params[i]]) {
-					return true;
-				}
-			}
-			return false;
-		}
-
-		/**
-   * Converts the given incremental dom function into an html string.
-   * @param {!function()} incDomFn
-   * @return {string}
-   */
-
-	}, {
-		key: 'toHtmlString',
-		value: function toHtmlString(incDomFn) {
-			var element = document.createElement('div');
-			IncrementalDOM.patch(element, incDomFn);
-			return element.innerHTML;
-		}
-
-		/**
-   * Converts the given html string into an incremental dom function.
-   * @param {string|{contentKind: string, content: string}} value
-   * @return {!function()}
-   */
-
-	}, {
-		key: 'toIncDom',
-		value: function toIncDom(value) {
-			if ((0, _metal.isObject)(value) && (0, _metal.isString)(value.content) && value.contentKind === 'HTML') {
-				value = value.content;
-			}
-			if ((0, _metal.isString)(value)) {
-				value = _metalIncrementalDom.HTML2IncDom.buildFn(value);
-			}
-			return value;
-		}
-	}]);
-
-	return Soy;
-}(_metalIncrementalDom2.default.constructor);
-
-var soyRenderer_ = new Soy();
-soyRenderer_.RENDERER_NAME = 'soy';
-
-exports.default = soyRenderer_;
-exports.Config = _metalState.Config;
-exports.Soy = soyRenderer_;
-exports.SoyAop = _SoyAop2.default;
-exports.validators = _metalState.validators;
-
-/***/ }),
 /* 3 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -5100,7 +5100,7 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -5234,7 +5234,7 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -5312,11 +5312,11 @@ goog.loadModule(function (exports) {
         ie_close('title');
         ie_open('link', null, null, 'rel', 'stylesheet', 'href', 'https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700|Roboto+Mono');
         ie_close('link');
-        ie_open('link', null, null, 'rel', 'stylesheet', 'href', '/sweet-apex/vendor/icon-12/icon-12.css');
-        ie_close('link');
         ie_open('link', null, null, 'rel', 'stylesheet', 'href', '/sweet-apex/vendor/galano/galano.css');
         ie_close('link');
         ie_open('link', null, null, 'rel', 'stylesheet', 'href', '/sweet-apex/vendor/icon-16/icon-16.css');
+        ie_close('link');
+        ie_open('link', null, null, 'rel', 'stylesheet', 'href', '/sweet-apex/vendor/icon-12/icon-12.css');
         ie_close('link');
         ie_open('link', null, null, 'rel', 'stylesheet', 'href', '/sweet-apex/vendor/senna/senna.css');
         ie_close('link');
@@ -5399,7 +5399,7 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -5579,7 +5579,7 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -5781,7 +5781,7 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -5896,7 +5896,7 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -6141,7 +6141,7 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -6206,7 +6206,7 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -6293,7 +6293,7 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -6374,7 +6374,7 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -6441,11 +6441,11 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
-var _moment = __webpack_require__(1);
+var _moment = __webpack_require__(2);
 
 var _moment2 = _interopRequireDefault(_moment);
 
@@ -11957,7 +11957,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -12034,7 +12034,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -12173,7 +12173,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -12236,7 +12236,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -12299,7 +12299,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -12425,7 +12425,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -12488,7 +12488,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -12596,7 +12596,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -12659,7 +12659,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -12768,7 +12768,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -12904,7 +12904,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -12998,7 +12998,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -13060,7 +13060,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -13183,7 +13183,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -13306,7 +13306,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -13418,7 +13418,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -13573,7 +13573,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -13665,7 +13665,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -13848,7 +13848,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -13915,7 +13915,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -13999,7 +13999,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -14063,7 +14063,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -14143,7 +14143,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -14223,7 +14223,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -14303,7 +14303,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -14406,7 +14406,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -14510,7 +14510,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -14581,7 +14581,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -14648,7 +14648,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -14719,7 +14719,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -14790,7 +14790,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -14856,7 +14856,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -14927,7 +14927,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -15002,7 +15002,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -15098,7 +15098,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -15194,7 +15194,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -15281,7 +15281,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -15365,7 +15365,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -15435,7 +15435,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -15545,7 +15545,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -15658,7 +15658,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -15722,7 +15722,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -15809,7 +15809,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -15887,7 +15887,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -15969,7 +15969,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -16048,7 +16048,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -16128,7 +16128,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -16209,7 +16209,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -16336,7 +16336,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -16464,7 +16464,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -16565,7 +16565,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -16693,7 +16693,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -16851,7 +16851,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -16965,7 +16965,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -17064,7 +17064,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -17150,7 +17150,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -17286,7 +17286,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -17359,7 +17359,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -17455,7 +17455,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -17541,7 +17541,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -17634,7 +17634,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -17725,7 +17725,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -17839,7 +17839,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -17969,7 +17969,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -18054,7 +18054,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -18145,7 +18145,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -18285,7 +18285,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -18359,7 +18359,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -18481,7 +18481,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -18582,7 +18582,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -18698,7 +18698,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -18766,7 +18766,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -18860,7 +18860,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -18945,7 +18945,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -19053,7 +19053,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -19217,7 +19217,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -19303,7 +19303,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -19389,7 +19389,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -19453,7 +19453,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -19550,7 +19550,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -19616,7 +19616,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -19743,7 +19743,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -19834,7 +19834,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -19925,7 +19925,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -19989,7 +19989,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -20117,7 +20117,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -20247,7 +20247,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -20316,7 +20316,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -20381,7 +20381,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -20460,7 +20460,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -20646,7 +20646,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -20748,7 +20748,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -20812,7 +20812,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -20887,7 +20887,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -21047,7 +21047,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -21224,7 +21224,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -21296,7 +21296,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -21411,7 +21411,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -21526,7 +21526,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -21618,7 +21618,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -21691,7 +21691,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -21754,7 +21754,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -21887,7 +21887,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -21980,7 +21980,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -22051,7 +22051,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -22171,7 +22171,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -22242,7 +22242,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -22308,7 +22308,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -22433,7 +22433,7 @@ exports.default = Toggler;
 
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -22532,7 +22532,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -22627,7 +22627,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -22689,7 +22689,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -22751,7 +22751,7 @@ exports.default = Toggler;
 //! moment.js language configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -22874,7 +22874,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -23029,7 +23029,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -23131,7 +23131,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -23193,7 +23193,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -23255,7 +23255,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -23338,7 +23338,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -23410,7 +23410,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -23474,7 +23474,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -23588,7 +23588,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -23695,7 +23695,7 @@ exports.default = Toggler;
 //! moment.js locale configuration
 
 ;(function (global, factory) {
-    true ? factory(__webpack_require__(1)) :
+    true ? factory(__webpack_require__(2)) :
    typeof define === 'function' && define.amd ? define(['../moment'], factory) :
    factory(global.moment)
 }(this, (function (moment) { 'use strict';
@@ -38885,7 +38885,7 @@ var _AutocompleteBase2 = __webpack_require__(47);
 
 var _AutocompleteBase3 = _interopRequireDefault(_AutocompleteBase2);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -39605,7 +39605,7 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -39721,7 +39721,7 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -39827,7 +39827,7 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -39988,7 +39988,7 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -40120,7 +40120,7 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -40220,7 +40220,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -40699,7 +40699,7 @@ var _metalDom = __webpack_require__(16);
 
 var _metalDom2 = _interopRequireDefault(_metalDom);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -41193,7 +41193,7 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -41513,7 +41513,7 @@ var _metalKeyboardFocus = __webpack_require__(230);
 
 var _metalKeyboardFocus2 = _interopRequireDefault(_metalKeyboardFocus);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -41856,7 +41856,7 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -42669,7 +42669,7 @@ var _ReadingProgressTracker = __webpack_require__(236);
 
 var _ReadingProgressTracker2 = _interopRequireDefault(_ReadingProgressTracker);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -42851,7 +42851,7 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -43778,7 +43778,7 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -43895,7 +43895,7 @@ var _metalToggler = __webpack_require__(48);
 
 var _metalToggler2 = _interopRequireDefault(_metalToggler);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -43978,7 +43978,7 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -44151,7 +44151,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -44183,7 +44183,7 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -44285,7 +44285,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -44317,7 +44317,7 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -44520,7 +44520,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -44552,7 +44552,7 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -44661,7 +44661,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -44693,7 +44693,7 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -45259,7 +45259,7 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -45482,7 +45482,7 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -45600,7 +45600,7 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -45734,7 +45734,7 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -45888,7 +45888,7 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
@@ -46306,7 +46306,7 @@ var _metalComponent = __webpack_require__(0);
 
 var _metalComponent2 = _interopRequireDefault(_metalComponent);
 
-var _metalSoy = __webpack_require__(2);
+var _metalSoy = __webpack_require__(1);
 
 var _metalSoy2 = _interopRequireDefault(_metalSoy);
 
