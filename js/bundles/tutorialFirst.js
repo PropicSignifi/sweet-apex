@@ -1,7 +1,7 @@
 var pageComponent =
 webpackJsonppageComponent([6],{
 
-/***/ 268:
+/***/ 332:
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -43,7 +43,7 @@ __webpack_require__(14);
 
 __webpack_require__(15);
 
-var _indexSoy = __webpack_require__(269);
+var _indexSoy = __webpack_require__(333);
 
 var _indexSoy2 = _interopRequireDefault(_indexSoy);
 
@@ -75,7 +75,7 @@ exports.default = tutorialFirst;
 
 /***/ }),
 
-/***/ 269:
+/***/ 333:
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -187,4 +187,4 @@ exports.default = templates;
 
 /***/ })
 
-},[268]);
+},[332]);

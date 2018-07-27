@@ -1,7 +1,7 @@
 var pageComponent =
 webpackJsonppageComponent([9],{
 
-/***/ 264:
+/***/ 262:
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -43,7 +43,7 @@ __webpack_require__(14);
 
 __webpack_require__(15);
 
-var _indexSoy = __webpack_require__(265);
+var _indexSoy = __webpack_require__(263);
 
 var _indexSoy2 = _interopRequireDefault(_indexSoy);
 
@@ -75,7 +75,7 @@ exports.default = pageDocsIndex;
 
 /***/ }),
 
-/***/ 265:
+/***/ 263:
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -286,4 +286,4 @@ exports.default = templates;
 
 /***/ })
 
-},[264]);
+},[262]);
