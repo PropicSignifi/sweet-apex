@@ -5327,8 +5327,8 @@ goog.loadModule(function (exports) {
         ie_void('script', null, null, 'src', '/sweet-apex/js/bundles/shared.electric.js');
         ie_void('script', null, null, 'src', '/sweet-apex/vendor/senna/senna.js');
         ie_void('script', null, null, 'src', '/sweet-apex/vendor/codemirror/lib/codemirror.js');
-        ie_void('script', null, null, 'src', '/sweet-apex/vendor/codemirror/mode/css/css.js');
         ie_void('script', null, null, 'src', '/sweet-apex/vendor/codemirror/mode/javascript/javascript.js');
+        ie_void('script', null, null, 'src', '/sweet-apex/vendor/codemirror/mode/css/css.js');
         ie_void('script', null, null, 'src', '/sweet-apex/vendor/codemirror/mode/xml/xml.js');
         ie_open('link', null, null, 'rel', 'stylesheet', 'href', (($$temp = opt_data.site.basePath) == null ? '' : $$temp) + '/styles/main.css');
         ie_close('link');
