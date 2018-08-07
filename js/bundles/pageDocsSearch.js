@@ -1,7 +1,7 @@
 var pageComponent =
 webpackJsonppageComponent([8],{
 
-/***/ 266:
+/***/ 264:
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -43,7 +43,7 @@ __webpack_require__(14);
 
 __webpack_require__(15);
 
-var _searchSoy = __webpack_require__(267);
+var _searchSoy = __webpack_require__(265);
 
 var _searchSoy2 = _interopRequireDefault(_searchSoy);
 
@@ -75,7 +75,7 @@ exports.default = pageDocsSearch;
 
 /***/ }),
 
-/***/ 267:
+/***/ 265:
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -215,4 +215,4 @@ exports.default = templates;
 
 /***/ })
 
-},[266]);
+},[264]);
