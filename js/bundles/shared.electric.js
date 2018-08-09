@@ -34,7 +34,7 @@
 /******/
 /******/ 	// objects to store loaded and loading chunks
 /******/ 	var installedChunks = {
-/******/ 		48: 0
+/******/ 		49: 0
 /******/ 	};
 /******/
 /******/ 	// The require function
@@ -5320,16 +5320,16 @@ goog.loadModule(function (exports) {
         ie_close('link');
         ie_open('link', null, null, 'rel', 'stylesheet', 'href', '/sweet-apex/vendor/senna/senna.css');
         ie_close('link');
-        ie_open('link', null, null, 'rel', 'stylesheet', 'href', '/sweet-apex/vendor/codemirror/lib/codemirror.css');
-        ie_close('link');
         ie_open('link', null, null, 'rel', 'stylesheet', 'href', '/sweet-apex/vendor/codemirror/theme/dracula.css');
+        ie_close('link');
+        ie_open('link', null, null, 'rel', 'stylesheet', 'href', '/sweet-apex/vendor/codemirror/lib/codemirror.css');
         ie_close('link');
         ie_void('script', null, null, 'src', '/sweet-apex/js/bundles/shared.electric.js');
         ie_void('script', null, null, 'src', '/sweet-apex/vendor/senna/senna.js');
         ie_void('script', null, null, 'src', '/sweet-apex/vendor/codemirror/lib/codemirror.js');
         ie_void('script', null, null, 'src', '/sweet-apex/vendor/codemirror/mode/css/css.js');
-        ie_void('script', null, null, 'src', '/sweet-apex/vendor/codemirror/mode/javascript/javascript.js');
         ie_void('script', null, null, 'src', '/sweet-apex/vendor/codemirror/mode/xml/xml.js');
+        ie_void('script', null, null, 'src', '/sweet-apex/vendor/codemirror/mode/javascript/javascript.js');
         ie_open('link', null, null, 'rel', 'stylesheet', 'href', (($$temp = opt_data.site.basePath) == null ? '' : $$temp) + '/styles/main.css');
         ie_close('link');
         ie_close('electrichead');
