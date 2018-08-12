@@ -34,7 +34,7 @@
 /******/
 /******/ 	// objects to store loaded and loading chunks
 /******/ 	var installedChunks = {
-/******/ 		55: 0
+/******/ 		56: 0
 /******/ 	};
 /******/
 /******/ 	// The require function
@@ -5316,9 +5316,9 @@ goog.loadModule(function (exports) {
         ie_close('link');
         ie_open('link', null, null, 'rel', 'stylesheet', 'href', '/sweet-apex/vendor/icon-12/icon-12.css');
         ie_close('link');
-        ie_open('link', null, null, 'rel', 'stylesheet', 'href', '/sweet-apex/vendor/senna/senna.css');
-        ie_close('link');
         ie_open('link', null, null, 'rel', 'stylesheet', 'href', '/sweet-apex/vendor/icon-16/icon-16.css');
+        ie_close('link');
+        ie_open('link', null, null, 'rel', 'stylesheet', 'href', '/sweet-apex/vendor/senna/senna.css');
         ie_close('link');
         ie_open('link', null, null, 'rel', 'stylesheet', 'href', '/sweet-apex/vendor/codemirror/lib/codemirror.css');
         ie_close('link');
